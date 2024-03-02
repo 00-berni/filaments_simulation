@@ -28,7 +28,7 @@ beta = np.arctan2(part[:,1],part[:,0])
 
 # velocities
 V = 2
-v = V * np.array([np.cos(beta)*np.sin(alpha) + 3/V, np.sin(beta)*np.sin(alpha) + 3/V, np.cos(alpha)])
+v = V * np.array([[np.cos(b)*np.sin(a), np.sin(b)*np.sin(a), np.cos(a)] for (a,b) in zip(alpha,beta)])
 
 # line of sight
 line_sight = np.array([t+5,
@@ -47,47 +47,51 @@ ind_y = np.where(np.logical_and(np.abs(part[:,0,:]) < -map_yz[1,-1], np.abs(part
 
 
 
+
 ax = plt.figure().add_subplot(projection='3d')
 ax.plot(*l,linestyle='dashdot',color='orange')
-for p in part:
-    ax.plot(*p,color='blue',alpha=0.1)
+for (pi,vi) in zip(part,v):
+    ax.plot(*pi,color='blue',alpha=0.1)
+    # ax.quiver(*pi,*vi)
 # ax.plot(*line_sight,linestyle='dashed',color='green')
 
 plt.figure()
 plt.subplot(231)
 plt.xlabel('x')
 plt.ylabel('y')
-plt.plot(xl,yl,'-.',color='orange')
-plt.plot(*map_xy,color='red')
-for p in part:
-    plt.plot(p[0],p[1],color='blue',alpha=0.1)
+# plt.plot(xl,yl,'-.',color='black')
+plt.plot(*map_xy,color='yellow')
+for (pi,vi) in zip(part,v):
+    # plt.plot(pi[0],pi[1],color='blue',alpha=0.1)
+    plt.scatter(pi[0],pi[1],c=vi[2],cmap='RdBu',alpha=0.1)
 plt.subplot(232)
 plt.ylabel('z')
 plt.xlabel('y')
-plt.plot(yl,zl,'-.',color='orange')
-plt.plot(*map_yz,color='red')
-for p in part:
-    plt.plot(p[1],p[2],color='blue',alpha=0.1)
+# plt.plot(yl,zl,'-.',color='orange')
+plt.plot(*map_yz,color='yellow')
+for (pi,vi) in zip(part,v):
+    # plt.plot(pi[1],pi[2],color='blue',alpha=0.1)
+    plt.scatter(pi[1],pi[2],c=vi[0],cmap='RdBu',alpha=0.1)
 plt.subplot(233)
 plt.xlabel('z')
 plt.ylabel('x')
-plt.plot(zl,xl,'-.',color='orange')
-plt.plot(*map_zx,color='red')
-for p in part:
-    plt.plot(p[2],p[0],color='blue',alpha=0.1)
+# plt.plot(zl,xl,'-.',color='orange')
+plt.plot(*map_zx,color='yellow')
+for (pi,vi) in zip(part,v):
+    # plt.plot(pi[2],pi[0],color='blue',alpha=0.1)
+    plt.scatter(pi[2],pi[0],c=vi[1],cmap='RdBu',alpha=0.1)
 
 plt.subplot(234)
-plt.hist(v[2,ind_z[0],ind_z[1]].flatten(),100)
+plt.hist(v[ind_z[0],2,ind_z[1]].flatten(),100)
 plt.xlabel('$v_z$')
 plt.ylabel('counts')
 plt.subplot(235)
-plt.hist(v[0,ind_x[0],ind_x[1]].flatten(),100)
+plt.hist(v[ind_x[0],0,ind_x[1]].flatten(),100)
 plt.xlabel('$v_x$')
 plt.subplot(236)
-plt.hist(v[1,ind_y[0],ind_y[1]].flatten(),100)
+plt.hist(v[ind_y[0],1,ind_y[1]].flatten(),100)  
 plt.xlabel('$v_y$')
 
-print(v.shape)
 
 
 plt.show()
