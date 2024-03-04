@@ -37,14 +37,14 @@ v = V * np.array([[np.cos(b)*np.sin(a), np.sin(b)*np.sin(a), np.cos(a)] for (a,b
 
 
 # define selected areas to study velocity
-map_xy = np.array([[-5,15,15,-5,-5],[-50,-50,50,50,-50]])
-ind_z = np.where(np.logical_and(np.abs(part[:,1,:]) < -map_xy[1,-1], np.abs(part[:,0,:]-5) < 10))
+map_xy = np.array([[-10,25,25,-10,-10],[-50,-50,50,50,-50]])
+ind_z = np.where(np.logical_and(np.abs(part[:,1,:]) < -map_xy[1,-1], np.abs(part[:,0,:]-7.5) < 17.5))
 
 map_yz = np.array([[-60,60,60,-60,-60],[-150,-150,150,150,-150]])
 ind_x = np.where(np.logical_and(np.abs(part[:,2,:]) < -map_yz[1,-1], np.abs(part[:,1,:]) < -map_yz[0,-1]))
 
-map_zx = np.array([[-200,-200,0,0,-200],[-20,20,20,-20,-20]])
-ind_y = np.where(np.logical_and(np.abs(part[:,0,:]) < -map_yz[1,-1], np.abs(part[:,2,:]-100) < 100))
+map_zx = np.array([[-70,-70,70,70,-70],[-10,30,30,-10,-10]])
+ind_y = np.where(np.logical_and(np.abs(part[:,0,:]-10) < 20, np.abs(part[:,2,:]) < 70))
 
 
 ## 3D plot
