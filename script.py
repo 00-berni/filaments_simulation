@@ -66,7 +66,7 @@ pxy[0].set_xlabel('x')
 pxy[0].set_ylabel('y')
 pxy[0].plot(*map_xy,color='yellow')
 for (pi,vi) in zip(part,v):
-    pxy[0].scatter(pi[0],pi[1],c=vi[2],vmin=vmin,vmax=vmax,cmap='RdBu',alpha=0.1)
+    pxy[0].scatter(pi[0],pi[1],c=vi[2],vmin=vmin,vmax=vmax,cmap='RdBu')
 pxy[1].hist(v[ind_z[0],2,ind_z[1]].flatten(),100)
 pxy[1].set_xlabel('$v_z$')
 pxy[1].set_ylabel('counts')
@@ -76,7 +76,7 @@ pyz[0].set_ylabel('z')
 pyz[0].set_xlabel('y')
 pyz[0].plot(*map_yz,color='yellow')
 for (pi,vi) in zip(part,v):
-    pyz[0].scatter(pi[1],pi[2],c=vi[0],cmap='RdBu',alpha=0.1)
+    pyz[0].scatter(pi[1],pi[2],c=vi[0],vmin=vmin,vmax=vmax,cmap='RdBu')
 pyz[1].hist(v[ind_x[0],0,ind_x[1]].flatten(),100)
 pyz[1].set_xlabel('$v_x$')
 
@@ -85,7 +85,9 @@ pzx[0].set_xlabel('z')
 pzx[0].set_ylabel('x')
 pzx[0].plot(*map_zx,color='yellow')
 for (pi,vi) in zip(part,v):
-    pp = pzx[0].scatter(pi[2],pi[0],c=vi[1],cmap='RdBu',alpha=0.1)
+    pp = pzx[0].scatter(pi[2],pi[0],c=vi[1],vmin=vmin,vmax=vmax,cmap='RdBu')
+cbaxes = fig.add_axes([0.92, 0.1, 0.02, 0.8])  
+fig.colorbar(pp,cax = cbaxes,extend='both',label='$v_i$')
 pzx[1].hist(v[ind_y[0],1,ind_y[1]].flatten(),100)  
 pzx[1].set_xlabel('$v_y$')
 
