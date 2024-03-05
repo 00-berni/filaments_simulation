@@ -4,6 +4,7 @@ from numpy.typing import NDArray
 import matplotlib.pyplot as plt
 
 
+    
 
 def mat_to_arr(mat: NDArray, axis: int) -> NDArray:
     return mat[:,axis].reshape(3,1)
@@ -18,6 +19,18 @@ Y0 = np.array([[0],[1],[0]])
 Z0 = np.array([[0],[0],[1]])
 
 ID = arr_to_mat(X0,Y0,Z0)
+
+def rotation(axis: int, ang: float) -> NDArray:
+    c = np.cos(ang)
+    s = np.sin(ang)
+    mat = ID.copy().astype(float)
+    idxs = [0,1,2]
+    idxs.remove(axis)
+    idx1 = idxs*2
+    idx2 = idxs+idxs[::-1]
+    
+    mat[idx1,idx2] = np.array([c,c,-s,s])
+    return mat
 
 class AxSys():
     def __init__(self, x1: NDArray = X0, y1: NDArray = Y0, z1: NDArray = Z0 ) -> None:
