@@ -1,8 +1,19 @@
+from typing import Any
 import numpy as np
-from numpy import pi, cos, sin
+from numpy import pi
 from numpy.typing import NDArray
 import matplotlib.pyplot as plt
 import filpy.alglin as alg
+
+def sin(x: Any) -> Any:
+    val = np.sin(x)
+    # val = np.where(val<1e-15,0,val)
+    return val
+
+def cos(x: Any) -> Any:
+    val = np.cos(x)
+    # val = np.where(val<1e-15,0,val)
+    return val
 
 test_num = 1
 
@@ -108,8 +119,10 @@ if test_num == 0:
 
 elif test_num == 1:
 
+    display_plot = True
+
     numpoints = 100
-    t = np.linspace(-0.5,1.9,numpoints)
+    t = np.linspace(-0.6,1.9,numpoints)
 
     r = 0.21
 
@@ -130,9 +143,9 @@ elif test_num == 1:
     # g_zl = 3*t**2     #: dz/dt
 
     m_grad = np.sqrt(g_xl**2+g_yl**2+g_zl**2)
-    grad = np.array([g_xl,g_yl,g_zl])/m_grad
+    grad = np.array([g_xl,g_yl,g_zl])#/m_grad
     
-    print(grad[:,0],g_yl[0]*pi, grad.shape,m_grad[0])
+
 
     if len(np.where(g_zl==0)[0]) == 0:
         x1 = np.ones(numpoints)
@@ -148,11 +161,10 @@ elif test_num == 1:
         y1 = (-g_zl*z1 - g_xl*x1)/g_yl
     else:
         raise
-     
-
 
 
     axis1 = np.array([x1,y1,z1])/np.sqrt(x1**2+y1**2+z1**2)
+
 
     axis2 = np.stack(np.cross(np.stack(grad,axis=1),np.stack(axis1,axis=1)),axis=1)
     axis2 /= np.sqrt(np.sum(axis2**2,axis=0))
@@ -165,6 +177,7 @@ elif test_num == 1:
         coor_ = np.array([r*cos(th0*pi),r*sin(th0*pi),0])
         coor = np.stack([np.dot(mat[i],coor_) for i in range(numpoints)],axis=1)
 
+        print(mat[22:24])
 
         x_,y_,z_ = coor
 
@@ -172,9 +185,13 @@ elif test_num == 1:
         y = yl + y_
         z = zl + z_
 
+        pr_ran = numpoints
+        for i in range(pr_ran):
+            print(f'{i},{x[i]},{y[i]},{z[i]}')
+
         return np.array([x,y,z]) 
 
-    # stream = stream_fun(r=r)
+    stream = stream_fun(r=r)
     # x,y,z = stream
 
     # X,Y,Z = np.meshgrid(*stream)
@@ -192,28 +209,30 @@ elif test_num == 1:
 
     # U,V,W = np.meshgrid(*velox)
 
-    P_PARAM = 0
+    if display_plot:
+        P_PARAM = 1
 
-    if P_PARAM == 0:
-        import mayavi.mlab as mlab
+        if P_PARAM == 0:
+            import mayavi.mlab as mlab
 
-        # s1 = mlab.flow(*stream,*velox)
-        s4 = mlab.plot3d(*line,color=(0,1,0),name='cylinder axis',tube_radius=0.2)
-        s5 = mlab.plot3d(*line,color=(0,1,0),name='cylinder axis',tube_radius=None)
-        max_th = 1.80
-        N = 1
-        # mlab.plot3d(*grad,color=(0,0,0))
-        # mlab.plot3d(*axis1,color=(1,0,0))
-        # mlab.plot3d(*axis2,color=(0,0,1))
-        for th0 in np.linspace(0,max_th,N):
-            stream = stream_fun(r=r,th0=th0+0.75)
-            s2 = mlab.plot3d(*stream,color=(th0/max_th,0.5,1))
-        # s3 = mlab.quiver3d(*stream,*velox)
-        mlab.show()
-    else:
-        stream = stream_fun(r=r)
-        ax = plt.figure().add_subplot(projection='3d')
-        ax.plot(*line,'-.')
-        ax.plot(*stream)
+            # s1 = mlab.flow(*stream,*velox)
+            # s4 = mlab.plot3d(*line,color=(0,1,0),name='cylinder axis',tube_radius=0.2)
+            s5 = mlab.plot3d(*line,color=(0,1,0),name='cylinder axis',tube_radius=None)
+            max_th = 1.80
+            N = 1
+            # mlab.plot3d(*grad,color=(0,0,0))
+            # mlab.plot3d(*axis1,color=(1,0,0))
+            # mlab.plot3d(*axis2,color=(0,0,1))
+            for th0 in np.linspace(0,max_th,N):
+                stream = stream_fun(r=r,th0=th0)
+                s2 = mlab.plot3d(*stream,color=(th0/max_th,0.5,1))
+            # s3 = mlab.quiver3d(*stream,*velox)
+            mlab.show()
+        else:
+            stream = stream_fun(r=r)
+            ax = plt.figure().add_subplot(projection='3d')
+            ax.plot(*line,'-.')
+            # ax.plot(*stream)
+            ax.plot(stream[0,20:24],stream[1,20:24],stream[2,20:24],'.')
 
-        plt.show()
+            plt.show()
