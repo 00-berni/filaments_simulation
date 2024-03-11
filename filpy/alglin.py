@@ -1,10 +1,27 @@
+from typing import Any
 import numpy as np
 from numpy import pi
 from numpy.typing import NDArray
 import matplotlib.pyplot as plt
 
 
-    
+def double_reflection(x:NDArray,t:NDArray,r:NDArray,s:NDArray,n:int):
+    for i in range(n-1):
+        # compute reflection vector of R1.
+        v1 = x[:,i+1] - x[:,i]
+        c1 = np.dot(v1,v1)
+        # compute rL_i = R1 r_i
+        rL = r[:,i] - (2/c1 ) * np.dot(v1, r[:,i]) * v1
+        # compute tL_i = R1 t_i 
+        tL = t[:,i] - (2/c1 ) * np.dot(v1, t[:,i]) * v1 
+        # compute reflection vector of R2
+        v2 = t[:,i+1] - tL
+        c2 = np.dot(v2, v2)
+        # compute ri+1 = R2rL_i 
+        r = np.append(r, (rL - (2/c2 ) * np.dot(v2, rL) * v2).reshape(3,1),axis=1) 
+        # compute vector si+1 of Ui+1
+        s = np.append(s, np.cross(t[:,i+1], r[:,i+1]).reshape(3,1), axis=1)
+    return r,s,t
 
 def mat_to_arr(mat: NDArray, axis: int) -> NDArray:
     return mat[:,axis].reshape(3,1)
@@ -13,6 +30,17 @@ def arr_to_mat(*args) -> NDArray:
     return np.concatenate(args,axis=1)
     
 
+def sin(x: Any) -> Any:
+    val = np.sin(x)
+    val = np.where(val<1e-15,0,val)
+    return val
+
+def cos(x: Any) -> Any:
+    val = np.cos(x)
+    val = np.where(val<1e-15,0,val)
+    return val
+
+
 # Std Basis
 X0 = np.array([[1],[0],[0]])
 Y0 = np.array([[0],[1],[0]])
@@ -20,9 +48,9 @@ Z0 = np.array([[0],[0],[1]])
 
 ID = arr_to_mat(X0,Y0,Z0)
 
-def rotation(axis: int, ang: float) -> NDArray:
-    c = np.cos(ang)
-    s = np.sin(ang)
+def rot_mat(axis: int, ang: float) -> NDArray:
+    c = cos(ang)
+    s = sin(ang)
     mat = ID.copy().astype(float)
     idxs = [0,1,2]
     idxs.remove(axis)
