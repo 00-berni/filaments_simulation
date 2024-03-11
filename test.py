@@ -3,19 +3,11 @@ import numpy as np
 from numpy import pi
 from numpy.typing import NDArray
 import matplotlib.pyplot as plt
+from filpy.alglin import cos, sin
 import filpy.alglin as alg
 
-def sin(x: Any) -> Any:
-    val = np.sin(x)
-    # val = np.where(val<1e-15,0,val)
-    return val
 
-def cos(x: Any) -> Any:
-    val = np.cos(x)
-    # val = np.where(val<1e-15,0,val)
-    return val
-
-test_num = 1
+test_num = 2
 
 if test_num == 0:
 
@@ -122,62 +114,100 @@ elif test_num == 1:
     display_plot = True
 
     numpoints = 100
-    t = np.linspace(-0.6,1.9,numpoints)
+    t = np.linspace(0.3,1.8,numpoints)
+
+    #??
+    IND = 42
+    SLC = slice(IND,IND+4)
+    print('t',t[SLC])
 
     r = 0.21
 
-    xl = t**2 + t #10*(t-0.5)**3 + 2*(t-0.5)**2 + (t-0.5) - 2
-    yl = sin(t*pi) #(t-0.5)**4/6 + 2*(t-0.5)**2 + 1
-    zl = xl/4 + 2*yl*xl
+    # xl = (t-1)**2/5 + t #10*(t-0.5)**3 + 2*(t-0.5)**2 + (t-0.5) - 2
+    # yl = (t-0.5)**2/5 #(t-0.5)**4/6 + 2*(t-0.5)**2 + 1
+    # # yl = sin(t*pi) #(t-0.5)**4/6 + 2*(t-0.5)**2 + 1
+    # zl = xl/10 + yl*xl
     # xl = t**2
     # yl = t**2
     # zl = t**3
 
+    xl = t
+    yl = t**2
+    zl = xl + yl
+
+
     line = np.array([xl,yl,zl])
 
-    g_xl = 2*t + 1                              #: dx/dt
-    g_yl = cos(t*pi)*pi                         #: dy/dt
-    g_zl = g_xl/4 + 2 * (g_xl*yl + xl*g_yl)     #: dz/dt
+    #??
+    print('line\n',line[:,SLC])
+
+    # g_xl = 2*(t-1)/5 + 1                              #: dx/dt
+    # g_yl = (t-0.5)/5*2                         #: dy/dt
+    # # g_yl = cos(t*pi)*pi                         #: dy/dt
+    # g_zl = g_xl/10 + (g_xl*yl + xl*g_yl)     #: dz/dt
     # g_xl = 2*t                              #: dx/dt
     # g_yl = 2*t                         #: dy/dt
     # g_zl = 3*t**2     #: dz/dt
 
+    g_xl = np.ones(numpoints)
+    g_yl = 2*t
+    g_zl = g_xl + g_yl
+
     m_grad = np.sqrt(g_xl**2+g_yl**2+g_zl**2)
-    grad = np.array([g_xl,g_yl,g_zl])#/m_grad
+    grad = np.array([g_xl,g_yl,g_zl])/m_grad
     
 
+    # if len(np.where(g_zl==0)[0]) == 0:
+    #     x1 = np.ones(numpoints)
+    #     y1 = np.ones(numpoints)
+    #     z1 = (-abs(g_xl)*x1 -abs(g_yl)*y1)/abs(g_zl) 
+    # elif len(np.where(g_xl==0)[0]) == 0:
+    #     z1 = np.ones(numpoints)
+    #     y1 = np.ones(numpoints)
+    #     x1 = (-g_zl*z1 - g_yl*y1)/g_xl
+    # elif len(np.where(g_yl==0)[0]) == 0:
+    #     z1 = np.ones(numpoints)
+    #     x1 = np.ones(numpoints)
+    #     y1 = (-g_zl*z1 - g_xl*x1)/g_yl
+    # else:
+    #     raise
 
-    if len(np.where(g_zl==0)[0]) == 0:
-        x1 = np.ones(numpoints)
-        y1 = np.ones(numpoints)
-        z1 = (-g_xl*x1 - g_yl*y1)/g_zl 
-    elif len(np.where(g_xl==0)[0]) == 0:
-        z1 = np.ones(numpoints)
-        y1 = np.ones(numpoints)
-        x1 = (-g_zl*z1 - g_yl*y1)/g_xl
-    elif len(np.where(g_yl==0)[0]) == 0:
-        z1 = np.ones(numpoints)
-        x1 = np.ones(numpoints)
-        y1 = (-g_zl*z1 - g_xl*x1)/g_yl
-    else:
-        raise
+    # x1 = 2 / m_grad
+    # y1 = 2 / m_grad
+    # z1 = 6*t / m_grad
 
+    x1 = 0 / m_grad
+    y1 = 2 / m_grad
+    z1 = (x1 + y1) / m_grad
 
     axis1 = np.array([x1,y1,z1])/np.sqrt(x1**2+y1**2+z1**2)
 
 
+    # axis2 = np.stack([np.cross(grad[:,i],axis1[:,i]) for i in range(numpoints)],axis=1)
     axis2 = np.stack(np.cross(np.stack(grad,axis=1),np.stack(axis1,axis=1)),axis=1)
     axis2 /= np.sqrt(np.sum(axis2**2,axis=0))
+    axis3 = np.stack(np.cross(np.stack(axis2,axis=1),np.stack(grad,axis=1)),axis=1)
+    axis3 /= np.sqrt(np.sum(axis3**2,axis=0))
+
+    scal1 = np.array([np.dot(grad[:,i],axis3[:,i]) for i in range(numpoints)])
+    scal2 = np.array([np.dot(grad[:,i],axis2[:,i]) for i in range(numpoints)])
+    scal3 = np.array([np.dot(axis2[:,i],axis3[:,i]) for i in range(numpoints)])
+
+    print(scal1[scal1!=0])
+    print(scal2[scal2!=0])
+    print(scal3[scal3!=0])
 
 
     def stream_fun(r=3, th0=0):
 
-        mat = [ np.stack(np.array([axis1[:,i],axis2[:,i],grad[:,i]]),axis=1)  for i in range(numpoints)]
+        mat = [ np.stack(np.array([axis3[:,i],axis2[:,i],grad[:,i]]),axis=1)  for i in range(numpoints)]
 
         coor_ = np.array([r*cos(th0*pi),r*sin(th0*pi),0])
         coor = np.stack([np.dot(mat[i],coor_) for i in range(numpoints)],axis=1)
-
-        print(mat[22:24])
+        
+        #???
+        for m in mat[SLC]:
+            print('mat\n',m)
 
         x_,y_,z_ = coor
 
@@ -185,6 +215,7 @@ elif test_num == 1:
         y = yl + y_
         z = zl + z_
 
+        #??
         pr_ran = numpoints
         for i in range(pr_ran):
             print(f'{i},{x[i]},{y[i]},{z[i]}')
@@ -210,16 +241,16 @@ elif test_num == 1:
     # U,V,W = np.meshgrid(*velox)
 
     if display_plot:
-        P_PARAM = 1
+        P_PARAM = 0
 
         if P_PARAM == 0:
             import mayavi.mlab as mlab
 
             # s1 = mlab.flow(*stream,*velox)
-            # s4 = mlab.plot3d(*line,color=(0,1,0),name='cylinder axis',tube_radius=0.2)
+            s4 = mlab.plot3d(*line,color=(0,1,0),name='cylinder axis',tube_radius=0.2)
             s5 = mlab.plot3d(*line,color=(0,1,0),name='cylinder axis',tube_radius=None)
             max_th = 1.80
-            N = 1
+            N = 10
             # mlab.plot3d(*grad,color=(0,0,0))
             # mlab.plot3d(*axis1,color=(1,0,0))
             # mlab.plot3d(*axis2,color=(0,0,1))
@@ -230,9 +261,83 @@ elif test_num == 1:
             mlab.show()
         else:
             stream = stream_fun(r=r)
-            ax = plt.figure().add_subplot(projection='3d')
+            fig = plt.figure()
+            ax = fig.add_subplot(projection='3d')
+            ax.plot([0,max(xl)],
+                    [0,0],
+                    [0,0],'--',color='black')
+            ax.plot([0,0],
+                    [0,max(yl)],
+                    [0,0],':',color='black')
+            ax.plot([0,0],
+                    [0,0],
+                    [0,max(zl)],color='black')
             ax.plot(*line,'-.')
-            # ax.plot(*stream)
-            ax.plot(stream[0,20:24],stream[1,20:24],stream[2,20:24],'.')
+            ax.plot(*stream)
+            # ax.plot(stream[0,43:45],stream[1,43:45],stream[2,43:45],'.')
+            # ax.plot(*grad,'.')
+            # ax.plot(*axis1[:,SLC])
+            # ax.plot(*axis2[:,SLC])
+            fig, (ax1,ax2,ax3) = plt.subplots(1,3)
+            ax1.plot(grad[1,IND],grad[2,IND],'or')
+            ax1.plot(grad[1],grad[2])
+            ax1.plot(axis1[1],axis1[2],'.--')
+            ax1.plot(axis2[1],axis2[2],'.--')
+            ax2.plot(grad[2,IND],grad[0,IND],'or')
+            ax2.plot(grad[2],grad[0])
+            ax2.plot(axis1[2],axis1[0],'.--')
+            ax2.plot(axis2[2],axis2[0],'.--')
+            ax3.plot(grad[0,IND],grad[1,IND],'or')
+            ax3.plot(grad[0],grad[1])
+            ax3.plot(axis1[0],axis1[1],'.--')
+            ax3.plot(axis2[0],axis2[1],'.--')
 
             plt.show()
+
+elif test_num == 2:
+
+    numpoints = 200
+    u = np.linspace(0,0.7,numpoints)
+
+    x_i = (u+1)**2
+    x_j = sin(u*pi)
+    x_k = x_i * x_j
+
+    x = np.array([x_i,x_j,x_k])
+
+    t_i = 2*(u+1)
+    t_j = cos(u*pi)*pi
+    t_k = t_i * x_j + x_i * t_j
+
+    t = np.array([t_i,t_j,t_k])
+
+    r = np.array([[1],[0],[-t_i[0]/t_k[0]]])
+
+    s = np.cross(t[:,0],r[:,0]).reshape(3,1)
+
+
+    r,s,t = alg.double_reflection(x,t,r,s,numpoints)
+
+    R = 0.2
+    
+    def compute_stream(R,th0):
+        stream = np.array([R*cos(th0*pi),R*sin(th0*pi),0])
+        mat = [np.array([r[:,ui],
+                        s[:,ui],
+                        t[:,ui]]).T for ui in range(numpoints) ]
+
+        return np.array([ np.dot(m,stream) for m in mat]).T + x
+
+
+    for ui in range(numpoints):
+        print(f'r · s: {np.dot(r[:,ui],s[:,ui]):.5f}')
+        print(f'r · t: {np.dot(r[:,ui],t[:,ui]):.5f}')
+        print(f't · s: {np.dot(t[:,ui],s[:,ui]):.5f}')
+    
+    ax = plt.figure().add_subplot(projection='3d')
+    ax.plot(*x,'-.',color='orange')
+    num = 3
+    for th0 in np.linspace(0,1.8,num):
+        ax.plot(*compute_stream(R,th0),color='blue')
+
+    plt.show()
