@@ -1,11 +1,11 @@
 from typing import Any
 import numpy as np
-from numpy import pi
+from numpy import pi, sin, cos
 from numpy.typing import NDArray
 import matplotlib.pyplot as plt
 
 
-def double_reflection(x:NDArray,t:NDArray,r:NDArray,s:NDArray,n:int):
+def double_reflection(x:NDArray,t:NDArray,r:NDArray,s:NDArray,n:int) -> tuple[NDArray, NDArray, NDArray]:
     for i in range(n-1):
         # compute reflection vector of R1.
         v1 = x[:,i+1] - x[:,i]
@@ -29,17 +29,6 @@ def mat_to_arr(mat: NDArray, axis: int) -> NDArray:
 def arr_to_mat(*args) -> NDArray:
     return np.concatenate(args,axis=1)
     
-
-def sin(x: Any) -> Any:
-    val = np.sin(x)
-    val = np.where(val<1e-15,0,val)
-    return val
-
-def cos(x: Any) -> Any:
-    val = np.cos(x)
-    val = np.where(val<1e-15,0,val)
-    return val
-
 
 # Std Basis
 X0 = np.array([[1],[0],[0]])
