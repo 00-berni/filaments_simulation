@@ -1,9 +1,7 @@
-from typing import Any
 import numpy as np
-from numpy import pi
+from numpy import pi, cos, sin
 from numpy.typing import NDArray
 import matplotlib.pyplot as plt
-from filpy.alglin import cos, sin
 import filpy.alglin as alg
 
 
@@ -296,8 +294,10 @@ elif test_num == 1:
 
 elif test_num == 2:
 
+    DISPLAY_PLOT = True
+
     numpoints = 200
-    u = np.linspace(0,0.7,numpoints)
+    u = np.linspace(-0.2,1.2,numpoints)
 
     x_i = (u+1)**2
     x_j = sin(u*pi)
@@ -309,35 +309,61 @@ elif test_num == 2:
     t_j = cos(u*pi)*pi
     t_k = t_i * x_j + x_i * t_j
 
-    t = np.array([t_i,t_j,t_k])
+    t = np.array([t_i,t_j,t_k])/np.sqrt(t_i**2+t_j**2+t_k**2)
 
     r = np.array([[1],[0],[-t_i[0]/t_k[0]]])
+    r /= np.sqrt(np.sum(r**2,axis=0))
 
     s = np.cross(t[:,0],r[:,0]).reshape(3,1)
+    s /= np.sqrt(np.sum(s**2,axis=0))
 
 
     r,s,t = alg.double_reflection(x,t,r,s,numpoints)
 
     R = 0.2
     
-    def compute_stream(R,th0):
-        stream = np.array([R*cos(th0*pi),R*sin(th0*pi),0])
-        mat = [np.array([r[:,ui],
-                        s[:,ui],
-                        t[:,ui]]).T for ui in range(numpoints) ]
+    def compute_stream(R: float = R,th0: float = 0) -> NDArray:
+        stream = np.array([R*cos(u*pi + th0*pi),R*sin(u*pi + th0*pi),np.zeros(numpoints)])
+        mat = [np.array([r[:,ui],s[:,ui],t[:,ui]]).T for ui in range(numpoints) ]
 
-        return np.array([ np.dot(m,stream) for m in mat]).T + x
+        return np.array([ np.dot(mat[ui],stream[:,ui]) for ui in range(numpoints)]).T + x
 
-
+    print('num  \tr · s\tr · t\tt · s')
     for ui in range(numpoints):
-        print(f'r · s: {np.dot(r[:,ui],s[:,ui]):.5f}')
-        print(f'r · t: {np.dot(r[:,ui],t[:,ui]):.5f}')
-        print(f't · s: {np.dot(t[:,ui],s[:,ui]):.5f}')
-    
-    ax = plt.figure().add_subplot(projection='3d')
-    ax.plot(*x,'-.',color='orange')
-    num = 3
-    for th0 in np.linspace(0,1.8,num):
-        ax.plot(*compute_stream(R,th0),color='blue')
+        print(f'<{ui:3d}>\t{abs(np.dot(r[:,ui],s[:,ui])):.5f}\t{abs(np.dot(r[:,ui],t[:,ui])):.5f}\t{abs(np.dot(t[:,ui],s[:,ui])):.5f}')
 
-    plt.show()
+    print('\n- - - STREAM - - -')    
+    stream1 = compute_stream()
+    stream2 = compute_stream(th0=1.5)
+
+    print('num  \ts1 · s2')
+    for ui in range(numpoints):
+        print(f'({ui:3d})\t{np.dot(stream1[:,ui],stream2[:,ui]):.5f}')
+    
+    if DISPLAY_PLOT:
+        PLOT_PARAM = 0
+
+        if PLOT_PARAM == 0:
+            import mayavi.mlab as mlab
+            # pl1 = mlab.plot3d(*x,color=(0,1,0),name='cylinder axis',tube_radius=R)
+            pl2 = mlab.plot3d(*x,color=(0,1,0),name='cylinder axis',tube_radius=None)
+
+            th0_max = 1.9
+            num = 20
+            for th0 in np.linspace(0,th0_max,num):
+                mlab.plot3d(*compute_stream(R,th0),color=(0,0,1))
+            # mlab.plot3d(*stream1,color=(1,0,0))
+            # mlab.plot3d(*stream2,color=(0,0,1))
+            mlab.show()
+        elif PLOT_PARAM == 1:
+            ax = plt.figure().add_subplot(projection='3d')
+            ax.plot(*x,'-.',color='orange')
+            num = 3
+            for th0 in np.linspace(0,1.8,num):
+                ax.plot(*compute_stream(R,th0),color='blue')
+            # for ui in range(numpoints):
+            #     ax.plot(*np.append(x[:,ui].reshape(3,1),(r+x)[:,ui].reshape(3,1),axis=1),color='red')
+            #     ax.plot(*np.append(x[:,ui].reshape(3,1),(s+x)[:,ui].reshape(3,1),axis=1),color='green')
+            # ax.plot(*stream2)
+
+            plt.show()
