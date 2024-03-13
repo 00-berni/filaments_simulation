@@ -23,6 +23,16 @@ def double_reflection(x:NDArray,t:NDArray,r:NDArray,s:NDArray,n:int) -> tuple[ND
         s = np.append(s, np.cross(t[:,i+1], r[:,i+1]).reshape(3,1), axis=1)
     return r,s,t
 
+class Frame():
+    def __init__(self, r: NDArray, s: NDArray, t: NDArray) -> None:
+        self.r = r
+        self.s = s
+        self.t = t
+    
+    def compute_frame(self, curve: NDArray) -> None:
+        numpoints = curve.shape[-1]
+        self.r, self.s, self.t = double_reflection(curve, self.t, self.r, self.s, numpoints)
+
 def mat_to_arr(mat: NDArray, axis: int) -> NDArray:
     return mat[:,axis].reshape(3,1)
 
@@ -36,36 +46,6 @@ Y0 = np.array([[0],[1],[0]])
 Z0 = np.array([[0],[0],[1]])
 
 ID = arr_to_mat(X0,Y0,Z0)
-
-def rot_mat(axis: int, ang: float) -> NDArray:
-    c = cos(ang)
-    s = sin(ang)
-    mat = ID.copy().astype(float)
-    idxs = [0,1,2]
-    idxs.remove(axis)
-    idx1 = idxs*2
-    idx2 = idxs+idxs[::-1]
-    
-    mat[idx1,idx2] = np.array([c,c,-s,s])
-    return mat
-
-class AxSys():
-    def __init__(self, x1: NDArray = X0, y1: NDArray = Y0, z1: NDArray = Z0 ) -> None:
-        self.x1 = np.array([x1])
-        self.y1 = np.array([y1])
-        self.z1 = np.array([z1])
-
-    def coor(self) -> tuple[NDArray,NDArray,NDArray]:
-        return self.x1, self.y1, self.z1
-
-    def matrix_pos(self) -> NDArray:
-        x,y,z = self.coor()
-        return np.array([arr_to_mat(i,j,k) for (i,j,k) in zip(x,y,z)])
-
-
-class Point():
-    def __init__(self) -> None:
-        pass
 
 
 
