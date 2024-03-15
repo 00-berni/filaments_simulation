@@ -5,18 +5,20 @@ from numpy.typing import NDArray
 import matplotlib.pyplot as plt
 
 
-ID = np.array([[1., 0., 0.],
+ID = np.array([[1., 0., 0.],    #: identity matrix
                [0., 1., 0.],
                [0., 0., 1.]])
 
 
 def rot_mat(ang: float | int, axis: int) -> NDArray:
-    """Function to compute the rotation matrix
+    """To compute the rotation matrix
 
+    The unit of angle value has to be rad/pi
+    
     Parameters
     ----------
     ang : float | int
-        rotation angle value
+        rotation angle value [rad/pi]
     axis : int
         axis respect to which system rotates 
         (`[0,1,2]` --> `[i,j,k]`)
@@ -28,27 +30,31 @@ def rot_mat(ang: float | int, axis: int) -> NDArray:
         (if `ang = 0` then it returs identity)
     """
     # initialize rotation matrix as identity
-    rmat = ID
-    # compute sin and cosfloat
+    rmat = ID.copy()
+    # compute sin and cos
     s,c = sin(ang*pi), cos(ang*pi)
     # extract the axis of rotation plane
-    m, n = [0,1,2].remove(axis)
+    ind_axis = [0,1,2]
+    ind_axis.remove(axis)
+    m, n = ind_axis
     rmat[[m,n],[m,n]] = np.array([c,c])
-    rmat[[m,n],[n,m]] = np.array([-s,s])*(-(axis % 2))
+    rmat[[m,n],[n,m]] = np.array([-s,s])*(1-2*(axis % 2))
     return rmat
 
 def compute_rotation(ang: int | float | Sequence[int | float], axis: str) -> NDArray:
-    """Function to compute the rotation matrix 
+    """To compute the rotation matrix 
 
     It is possible to combine rotations around different axes:
         
       * pass a list (or a tuple) for `ang` with different rotation angles
       * pass a string for `axis` with the names of the rotation axes  
 
+    The unit of angle value(s) has to be rad/pi
+
     Parameters
     ----------
     ang : int | float | Sequence[int  |  float]
-        rotation angle value(s)
+        rotation angle value(s) [rad/pi]
     axis : str
         names of the rotation axis(es)
 
@@ -60,14 +66,15 @@ def compute_rotation(ang: int | float | Sequence[int | float], axis: str) -> NDA
     # define a dictionary to convert axis name in index
     indx = {'i': 0, 'j': 1, 'k': 2}
     # initialize rotation matrix as identity
-    rmat = ID
+    rmat = ID.copy()
     # check the angle type
     if len(axis) == 1: ang = [ang]
     # compute the combination of the rotation matrices
     for ax in axis:
         pos = axis.find(ax)
-        # compute the combination
-        rmat = rmat @ rot_mat(ang[pos],indx[ax])
+        if ang[pos] != 0:
+            # compute the combination
+            rmat = rot_mat(ang[pos],indx[ax]) @ rmat
     return rmat
 
 
@@ -85,15 +92,15 @@ class Frame():
 
     Attributes
     ----------
-    param : None | NDarray
+    param : None | NDArray
         curve parameter values
-    line : None | NDarray
+    line : None | NDArray
         spine curve vector
-    r : None | NDarray
+    r : None | NDArray
         normal unit vector
-    s : None | NDarray
+    s : None | NDArray
         unit vector obtain by cross product
-    t : None | NDarray
+    t : None | NDArray
         tangent unit vector of `line`
     
     Methods
@@ -113,8 +120,7 @@ class Frame():
     """
     @staticmethod
     def vec_module(vec: NDArray) -> float:
-        """Function to compute the module of
-        a vectors collection
+        """To compute the module of a vectors collection
 
         Parameters
         ----------
@@ -126,11 +132,11 @@ class Frame():
         float
             collection of their modules
         """
-        return np.sum(vec**2,axis=0)
+        return np.sqrt(np.sum(vec**2,axis=0))
 
     @staticmethod
     def normalize(vec: NDArray) -> NDArray:
-        """Function to normalize a vector
+        """To normalize a vector
 
         Parameters
         ----------
@@ -143,11 +149,11 @@ class Frame():
             normalized vectors collection
         """
         mod = Frame.vec_module(vec) 
-        return vec / mod
+        return vec/mod
 
     @staticmethod
     def double_reflection(x: NDArray, t: NDArray, r: NDArray, s: NDArray) -> tuple[NDArray, NDArray, NDArray]:
-        """Function to compute the frame along the spine curve
+        """To compute the frame along the spine curve
 
         The method requires the spine curve (`x`), its tangent vector (`t`) 
         and some initial values for the normal (`r`) and third (`s`) vectors
@@ -198,7 +204,24 @@ class Frame():
         return r,s,t
 
     def __init__(self, u: NDArray, line_eq: NDArray, t: NDArray, r0: NDArray, s0: NDArray) -> None:
+        """Constructor of the class
+
+        Parameters
+        ----------
+        u : NDArray
+            values of the spine curve parameter
+        line_eq : NDArray
+            spine curve
+        t : NDArray
+            tangent vector
+        r0 : NDArray
+            initial value for normal vector
+        s0 : NDArray
+            initial value for third vector
+        """
+        # check if the tangent vector is normalized
         if np.any(Frame.vec_module(t) != 1): t = Frame.normalize(t)
+        # compute the frame along the spine curve
         r,s,t = Frame.double_reflection(x=line_eq,t=t,r=r0,s=s0)
         
         self.param = u.copy()
@@ -208,15 +231,50 @@ class Frame():
         self.t = t.copy()
     
     def rotate(self, ang: int | float | Sequence[int | float], axis: str) -> None:
+        """To rotate the frame coordinates
+
+        It is possible to combine rotations around different axes:
+
+          * pass a list (or a tuple) for ang with different rotation angles
+          * pass a string for axis with the names of the rotation axes
+
+        The unit of angle value(s) has to be rad/pi
+    
+        Parameters
+        ----------
+        ang : int | float | Sequence[int  |  float]
+             rotation angle value(s) [rad/pi]
+        axis : str
+            names of the rotation axis(es)
+        """
+        # compute the rotation matrix
         rmat = compute_rotation(ang = ang, axis = axis)
-        numpoints = len(self.param)
-        self.line = Frame.normalize(np.array([rmat @ self.line[:,ui] for ui in range(numpoints)]))
-        self.r    = Frame.normalize(np.array([rmat @ self.r[:,ui] for ui in range(numpoints)]))
-        self.s    = Frame.normalize(np.array([rmat @ self.s[:,ui] for ui in range(numpoints)]))
-        self.t    = Frame.normalize(np.array([rmat @ self.t[:,ui] for ui in range(numpoints)]))
+        numpoints = len(self.param)     #: number of points  of the collection
+        # compute the rotated vectors
+        self.line = np.array([rmat @ self.line[:,ui] for ui in range(numpoints)]).T
+        self.r    = Frame.normalize(np.array([rmat @ self.r[:,ui] for ui in range(numpoints)]).T)
+        self.s    = Frame.normalize(np.array([rmat @ self.s[:,ui] for ui in range(numpoints)]).T)
+        self.t    = Frame.normalize(np.array([rmat @ self.t[:,ui] for ui in range(numpoints)]).T)
         
     def frame_matrices(self) -> NDArray:
-        numpoints = len(self.param) 
+        """To compute the matrices to change reference system
+
+        The method compute the matrix to pass from the frame attached 
+        to the spine curve to the cartesian one for each point of
+        the collection. 
+        
+        The matrix is simply:
+
+            [[r_i, s_i, t_i]
+             [r_j, s_j, t_j]
+             [r_k, s_k, t_k]]
+
+        Returns
+        -------
+        NDArray
+            collection of transformation matrices
+        """
+        numpoints = len(self.param)     #: number of points of the collection
         r = self.r
         s = self.s
         t = self.t
@@ -224,93 +282,120 @@ class Frame():
 
 
 class StreamLine():
-    
-    def __init__(self, omega: int | float, R: int | float, th0: int | float) -> None:
-        
-        self.par = {'w': omega, 'R': R, 'th0': th0}
+    """Class collects all the information about the 
+    trajectory and velocity of a line of the tube
 
+    Attributes
+    ----------
+    par : dict
+        parameters of the trajectory line
+    pos : None | NDArray
+        trajectory coordinates
+    vel : None | NDArray
+        velocity values along the trajectory
+    """
+    def __init__(self, omega: int | float, R: int | float, th0: int | float) -> None:
+        """Constructor of the class
+
+        Parameters
+        ----------
+        omega : int | float
+            wrapping of the trajectory line
+        R : int | float
+            distance from the spine curve
+        th0 : int | float
+            initial angle relative to the unit vector `r`
+        """
+        self.par = {'w': omega, 'R': R, 'th0': th0}
         self.pos = None
         self.vel = None
 
-    def compute_stream(self, frame: Frame, vT: float | NDArray):
+    def compute_stream(self, frame: Frame, v: float | NDArray, unif_field: bool = False):
+        """To compute the trajectory and the velocity of a line
+        of the filament along the spine curve
+
+        A constant value of `v` is considered as a constant 
+        velocity vector along `t` direction
+
+        Parameters
+        ----------
+        frame : Frame
+            frame attached to the spine curve
+        v : float | NDArray
+            velocity along the trajectory in addition to
+            rotational velocity (`R*omega`)
+        unif_field : bool, default `False`
+            if `True`,`v` is considered the module of a 
+            uniform velocity field
+
+        Returns
+        -------
+        StreamLine
+            the computed filament line
+        """
+        # extract parametrs of the line
         omega, R, th0 = self.par.values()
-        x = frame.line
+        x = frame.line      #: spine curve
+        # compute the transformation matrix along `x`
         frame_mat = frame.frame_matrices()
-        numpoints = len(frame.param)
-        ui = np.linspace(0,2,numpoints)
+        numpoints = len(frame.param)        #: number of points of the collection
+        ui = np.linspace(0,2,numpoints)     #: wrapping parametrization
         
-        # compute the streamline in the frame of the curve
-        stream = np.array([R*cos(omega*ui*pi + th0*pi),R*sin(omega*ui*pi + th0*pi),np.zeros(numpoints)])
-        # compute the cartesian coordinates of the streamline
+        ## Trajectory
+        # compute the trajectory coordinates in the frame attached to `x`
+        stream = np.array([R*cos(omega*pi*ui + th0*pi),R*sin(omega*pi*ui + th0*pi),np.zeros(numpoints)])
+        # compute the cartesian coordinates of the trajectory
         self.pos = np.array([ frame_mat[ui] @ stream[:,ui] for ui in range(numpoints)]).T + x
 
-        if isinstance(vT,(int,float)): 
-            vT = np.full(numpoints,vT)
-        # compute the streamline in the frame of the curve
-        velox = np.array([-omega*R*pi*sin(omega*ui*pi + th0*pi),omega*R*pi*cos(omega*ui*pi + th0*pi),vT])
-        # compute the cartesian coordinates of the streamline
+        ## Velocity
+        # for the uniform field v => v_t
+        if unif_field and omega != 0:
+            if np.any(v**2 < (omega*pi*R)**2):
+                raise Exception('\tv**2 - (omega*R)**2 < 0\nChange `omega` or `v` value!')
+            # tangent component to have constant module
+            v = np.sqrt(v**2 - (omega*pi*R)**2)
+        # check the type of `v`
+        if isinstance(v,(int,float)): 
+            v = np.array([np.zeros(numpoints),np.zeros(numpoints),np.full(numpoints,v)])
+        velox = v.copy()
+        if omega != 0:
+            # compute the velocity coordinates in the frame attached to `x`
+            velox += np.array([-omega*R*pi*sin(omega*ui*pi + th0*pi),omega*R*pi*cos(omega*ui*pi + th0*pi),np.zeros(numpoints)]) 
+        # compute the cartesian coordinates of the velocity
         self.vel = np.array([ frame_mat[ui] @ velox[:,ui] for ui in range(numpoints)]).T 
 
         return self
 
     def rotate(self, ang: int | float | Sequence[int | float], axis: str) -> None:
+        """To rotate the filament line
+
+        It is possible to combine rotations around different axes:
+
+            * pass a list (or a tuple) for ang with different rotation angles
+            * pass a string for axis with the names of the rotation axes
+        
+        The unit of angle value(s) has to be rad/pi
+
+        Parameters
+        ----------
+        ang : int | float | Sequence[int  |  float]
+            rotation angle value(s) [rad/pi]
+        axis : str
+            names of the rotation axis(es)
+        """
+        # compute the rotation matrix
         rmat = compute_rotation(ang, axis)
-        numpoints = len(self.param)
-        self.pos = np.array([ rmat @ self.pos[:,ui] for ui in range(numpoints)])
-        self.vel = np.array([ rmat @ self.vel[:,ui] for ui in range(numpoints)])
+        numpoints = len(self.par)       #: number of points of the collection
+        # compute the rotated vectors
+        self.pos = np.array([ rmat @ self.pos[:,ui] for ui in range(numpoints) ]).T
+        self.vel = np.array([ rmat @ self.vel[:,ui] for ui in range(numpoints) ]).T
 
-# if __name__ == '__main__':
-    
-#     # direction line 
-#     t = np.linspace(0,100,1000)
-#     xl = np.zeros(len(t)) + 50
-#     yl = np.zeros(len(t)) - 10
-#     zl = t
+class Filament():
 
-#     # cylider
-#     r = 5
-#     theta0 = pi/4
-    
-#     z = zl
-#     x = r*np.cos(z+theta0) + xl
-#     y = r*np.sin(z+theta0) + yl
+    def __init__(self, frame: Frame, line_param: Sequence[float | NDArray], v: float | NDArray, unif_field: bool = False) -> None:
+        omega, R, th0 = line_param
+        collection = [StreamLine(omega, Ri, thi).compute_stream(frame, v, unif_field=unif_field) for Ri in R for thi in th0]
 
-#     # direction line 
-#     xl2 = t
-#     yl2 = np.ones(len(t)) * 5
-#     zl2 = np.zeros(len(t)) + 50
-
-#     # cylider
-#     # r = 3
-#     # theta0 = pi/4
-    
-#     x2 = xl2
-#     z2 = r*np.cos(x2+theta0) + zl2
-#     y2 = r*np.sin(x2+theta0) + yl2
-
-#     ax = plt.figure().add_subplot(projection='3d')
-#     ax.plot(x,y,z,color='blue')
-#     ax.plot(x2,y2,z2,color='green')
-#     # ax.plot(xl,yl,zl,color='orange')
-#     # ax.plot(xl2,yl2,zl2,color='red')
-
-#     plt.figure()
-#     plt.subplot(131)
-#     plt.title('x-y')
-#     plt.plot(x,y,color='blue')
-#     plt.plot(x2,y2,color='red')
-#     # plt.plot(xl,yl,color='orange')
-#     # plt.plot(xl2,yl2,color='green')
-#     plt.subplot(132)
-#     plt.title('y-z')
-#     plt.plot(y,z,color='blue')
-#     plt.plot(y2,z2,color='red')
-#     # plt.plot(yl,zl,color='orange')
-#     # plt.plot(yl2,zl2,color='green')
-#     plt.subplot(133)
-#     plt.title('z-x')
-#     plt.plot(z,x,color='blue')
-#     plt.plot(z2,x2,color='red')
-#     # plt.plot(zl,xl,color='orange')
-#     # plt.plot(zl2,xl2,color='green')
-#     plt.show()
+        self.lines = collection
+        self.trj = np.array([line.pos for line in collection])
+        self.vel = np.array([line.vel for line in collection])
