@@ -1,6 +1,6 @@
 from typing import Any, Sequence
 import numpy as np
-from numpy import pi, sin, cos
+from numpy import pi, sin, cos, ndarray
 from numpy.typing import NDArray
 import matplotlib.pyplot as plt
 
@@ -118,6 +118,8 @@ class Frame():
     frame_matricies()
         compute the matrices to change reference system
     """
+    EMPTY_FRAME = (None,None,None,None,None)
+
     @staticmethod
     def vec_module(vec: NDArray) -> float:
         """To compute the module of a vectors collection
@@ -203,7 +205,7 @@ class Frame():
             s = np.append(s, np.cross(t[:,i+1], r[:,i+1]).reshape(3,1), axis=1)
         return r,s,t
 
-    def __init__(self, u: NDArray, line_eq: NDArray, t: NDArray, r0: NDArray, s0: NDArray) -> None:
+    def __init__(self, u: NDArray | None, line_eq: NDArray | None, t: NDArray | None, r0: NDArray | None, s0: NDArray | None) -> None:
         """Constructor of the class
 
         Parameters
@@ -219,16 +221,24 @@ class Frame():
         s0 : NDArray
             initial value for third vector
         """
-        # check if the tangent vector is normalized
-        if np.any(Frame.vec_module(t) != 1): t = Frame.normalize(t)
-        # compute the frame along the spine curve
-        r,s,t = Frame.double_reflection(x=line_eq,t=t,r=r0,s=s0)
-        
-        self.param = u.copy()
-        self.line = line_eq.copy()
-        self.r = r.copy()
-        self.s = s.copy()
-        self.t = t.copy()
+        # create an empty object
+        if u is None:
+            self.param = u
+            self.line = line_eq
+            self.r = r0
+            self.s = s0
+            self.t = t
+        else:
+            # check if the tangent vector is normalized
+            if np.any(Frame.vec_module(t) != 1): t = Frame.normalize(t)
+            # compute the frame along the spine curve
+            r,s,t = Frame.double_reflection(x=line_eq,t=t,r=r0,s=s0)
+            
+            self.param = u.copy()
+            self.line = line_eq.copy()
+            self.r = r.copy()
+            self.s = s.copy()
+            self.t = t.copy()
     
     def rotate(self, ang: int | float | Sequence[int | float], axis: str) -> None:
         """To rotate the frame coordinates
@@ -280,6 +290,14 @@ class Frame():
         t = self.t
         return np.array([np.array([r[:,ui],s[:,ui],t[:,ui]]).T for ui in range(numpoints)])
 
+    def copy(self):
+        new_frame = Frame(*Frame.EMPTY_FRAME)
+        new_frame.param = self.param.copy()
+        new_frame.line = self.line.copy()
+        new_frame.r = self.r.copy()
+        new_frame.s = self.s.copy()
+        new_frame.t = self.t.copy()
+        return new_frame
 
 class StreamLine():
     """Class collects all the information about the 
@@ -306,11 +324,11 @@ class StreamLine():
         th0 : int | float
             initial angle relative to the unit vector `r`
         """
-        self.par = {'w': omega, 'R': R, 'th0': th0}
+        self.par = {'omega': omega, 'R': R, 'th0': th0}
         self.pos = None
         self.vel = None
 
-    def compute_stream(self, frame: Frame, v: float | NDArray, unif_field: bool = False):
+    def compute_stream(self, frame: Frame, v: float | NDArray | None, field: str = 'T'):
         """To compute the trajectory and the velocity of a line
         of the filament along the spine curve
 
@@ -321,13 +339,12 @@ class StreamLine():
         ----------
         frame : Frame
             frame attached to the spine curve
-        v : float | NDArray
+        v : float | NDArray | None
             velocity along the trajectory in addition to
             rotational velocity (`R*omega`)
-        unif_field : bool, default `False`
+        field : str
             if `True`,`v` is considered the module of a 
             uniform velocity field
-
         Returns
         -------
         StreamLine
@@ -335,7 +352,7 @@ class StreamLine():
         """
         # extract parametrs of the line
         omega, R, th0 = self.par.values()
-        x = frame.line      #: spine curve
+        x = frame.line.copy()      #: spine curve
         # compute the transformation matrix along `x`
         frame_mat = frame.frame_matrices()
         numpoints = len(frame.param)        #: number of points of the collection
@@ -348,8 +365,10 @@ class StreamLine():
         self.pos = np.array([ frame_mat[ui] @ stream[:,ui] for ui in range(numpoints)]).T + x
 
         ## Velocity
+        if v is None:
+            v = 0
         # for the uniform field v => v_t
-        if unif_field and omega != 0:
+        if field[:4] == 'unif' and omega != 0:
             if np.any(v**2 < (omega*pi*R)**2):
                 raise Exception('\tv**2 - (omega*R)**2 < 0\nChange `omega` or `v` value!')
             # tangent component to have constant module
@@ -357,12 +376,19 @@ class StreamLine():
         # check the type of `v`
         if isinstance(v,(int,float)): 
             v = np.array([np.zeros(numpoints),np.zeros(numpoints),np.full(numpoints,v)])
+        elif type(v) != ndarray and field != 'T':
+            direc = {'r': 0, 's': 1, 't': 2}
+            new_v = np.zeros(stream.shape)
+            indx = [direc[d] for d in field]
+            var = [stream[:,ix] for ix in indx]
+            new_v[:,2] = v(*var)
+            v = new_v
         velox = v.copy()
         if omega != 0:
             # compute the velocity coordinates in the frame attached to `x`
             velox += np.array([-omega*R*pi*sin(omega*ui*pi + th0*pi),omega*R*pi*cos(omega*ui*pi + th0*pi),np.zeros(numpoints)]) 
         # compute the cartesian coordinates of the velocity
-        self.vel = np.array([ frame_mat[ui] @ velox[:,ui] for ui in range(numpoints)]).T 
+        self.vel = np.array([ frame_mat[ui] @ velox[:,ui] for ui in range(numpoints)]).T + frame.t
 
         return self
 
@@ -389,13 +415,46 @@ class StreamLine():
         # compute the rotated vectors
         self.pos = np.array([ rmat @ self.pos[:,ui] for ui in range(numpoints) ]).T
         self.vel = np.array([ rmat @ self.vel[:,ui] for ui in range(numpoints) ]).T
+    
+    def copy(self):
+        new_line = StreamLine(**self.par)
+        new_line.pos = self.pos.copy()
+        new_line.vel = self.vel.copy()
+        return new_line
 
 class Filament():
+    """Class collects information about filament lines
 
-    def __init__(self, frame: Frame, line_param: Sequence[float | NDArray], v: float | NDArray, unif_field: bool = False) -> None:
+    Attributes
+    ----------
+    frame : Frame
+        the reference frame attached to the spine curve
+    lines : list[StreamLine]
+        list of all lines of the filament
+    trj : NDArray
+        array with the trajectories of the lines
+    vel : NDArray
+        array with the velocities of the lines
+    """
+    def __init__(self, frame: Frame, line_param: Sequence[float | NDArray], v: float | NDArray, field: str) -> None:
+        """Constructor of the class
+
+        Parameters
+        ----------
+        frame : Frame
+            reference frame attached to the spine curve of the filament
+        line_param : Sequence[float  |  NDArray]
+            parameters of the line, like (omega, radius, theta0)
+        v : float | NDArray
+            velocity field in addition to rotation
+        unif_field : bool, default False
+            if `True`,`v` is considered the module of a 
+            uniform velocity field 
+        """
         omega, R, th0 = line_param
-        collection = [StreamLine(omega, Ri, thi).compute_stream(frame, v, unif_field=unif_field) for Ri in R for thi in th0]
+        collection = [StreamLine(omega, Ri, thi).compute_stream(frame, v, field=field) for Ri in R for thi in th0]
 
+        self.frame = frame.copy()
         self.lines = collection
         self.trj = np.array([line.pos for line in collection])
         self.vel = np.array([line.vel for line in collection])
