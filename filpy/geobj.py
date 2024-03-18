@@ -240,31 +240,6 @@ class Frame():
             self.s = s.copy()
             self.t = t.copy()
     
-    def rotate(self, ang: int | float | Sequence[int | float], axis: str) -> None:
-        """To rotate the frame coordinates
-
-        It is possible to combine rotations around different axes:
-
-          * pass a list (or a tuple) for ang with different rotation angles
-          * pass a string for axis with the names of the rotation axes
-
-        The unit of angle value(s) has to be rad/pi
-    
-        Parameters
-        ----------
-        ang : int | float | Sequence[int  |  float]
-             rotation angle value(s) [rad/pi]
-        axis : str
-            names of the rotation axis(es)
-        """
-        # compute the rotation matrix
-        rmat = compute_rotation(ang = ang, axis = axis)
-        numpoints = len(self.param)     #: number of points  of the collection
-        # compute the rotated vectors
-        self.line = np.array([rmat @ self.line[:,ui] for ui in range(numpoints)]).T
-        self.r    = Frame.normalize(np.array([rmat @ self.r[:,ui] for ui in range(numpoints)]).T)
-        self.s    = Frame.normalize(np.array([rmat @ self.s[:,ui] for ui in range(numpoints)]).T)
-        self.t    = Frame.normalize(np.array([rmat @ self.t[:,ui] for ui in range(numpoints)]).T)
         
     def frame_matrices(self) -> NDArray:
         """To compute the matrices to change reference system
@@ -297,6 +272,34 @@ class Frame():
         new_frame.r = self.r.copy()
         new_frame.s = self.s.copy()
         new_frame.t = self.t.copy()
+        return new_frame
+
+    def rotate(self, ang: int | float | Sequence[int | float], axis: str):
+        """To rotate the frame coordinates
+
+        It is possible to combine rotations around different axes:
+
+          * pass a list (or a tuple) for ang with different rotation angles
+          * pass a string for axis with the names of the rotation axes
+
+        The unit of angle value(s) has to be rad/pi
+    
+        Parameters
+        ----------
+        ang : int | float | Sequence[int  |  float]
+             rotation angle value(s) [rad/pi]
+        axis : str
+            names of the rotation axis(es)
+        """
+        # compute the rotation matrix
+        rmat = compute_rotation(ang = ang, axis = axis)
+        numpoints = len(self.param)     #: number of points  of the collection
+        new_frame: Frame = self.copy()
+        # compute the rotated vectors
+        new_frame.line = np.array([rmat @ new_frame.line[:,ui] for ui in range(numpoints)]).T
+        new_frame.r    = Frame.normalize(np.array([rmat @ new_frame.r[:,ui] for ui in range(numpoints)]).T)
+        new_frame.s    = Frame.normalize(np.array([rmat @ new_frame.s[:,ui] for ui in range(numpoints)]).T)
+        new_frame.t    = Frame.normalize(np.array([rmat @ new_frame.t[:,ui] for ui in range(numpoints)]).T)
         return new_frame
 
 class StreamLine():
@@ -392,7 +395,21 @@ class StreamLine():
 
         return self
 
-    def rotate(self, ang: int | float | Sequence[int | float], axis: str) -> None:
+    
+    def copy(self):
+        """To copy a frame
+
+        Returns
+        -------
+        StreamLine
+            the copy of the frame
+        """
+        new_line = StreamLine(**self.par)
+        new_line.pos = self.pos.copy()
+        new_line.vel = self.vel.copy()
+        return new_line
+
+    def rotate(self, ang: int | float | Sequence[int | float], axis: str):
         """To rotate the filament line
 
         It is possible to combine rotations around different axes:
@@ -411,18 +428,17 @@ class StreamLine():
         """
         # compute the rotation matrix
         rmat = compute_rotation(ang, axis)
-        numpoints = len(self.par)       #: number of points of the collection
+        numpoints = self.pos.shape[-1]       #: number of points of the collection
+        new_stream: StreamLine = self.copy()
         # compute the rotated vectors
-        self.pos = np.array([ rmat @ self.pos[:,ui] for ui in range(numpoints) ]).T
-        self.vel = np.array([ rmat @ self.vel[:,ui] for ui in range(numpoints) ]).T
-    
-    def copy(self):
-        new_line = StreamLine(**self.par)
-        new_line.pos = self.pos.copy()
-        new_line.vel = self.vel.copy()
-        return new_line
+        new_stream.pos = np.array([ rmat @ new_stream.pos[:,ui] for ui in range(numpoints) ]).T
+        new_stream.vel = np.array([ rmat @ new_stream.vel[:,ui] for ui in range(numpoints) ]).T
+        return new_stream
 
 class Filament():
+
+    EMPTY_FIL = (Frame(*Frame.EMPTY_FRAME),None,None,None)
+
     """Class collects information about filament lines
 
     Attributes
@@ -436,7 +452,7 @@ class Filament():
     vel : NDArray
         array with the velocities of the lines
     """
-    def __init__(self, frame: Frame, line_param: Sequence[float | NDArray], v: float | NDArray, field: str) -> None:
+    def __init__(self, frame: Frame, line_param: Sequence[float | NDArray] | None, v: float | NDArray | None, field: str | None) -> None:
         """Constructor of the class
 
         Parameters
@@ -451,10 +467,32 @@ class Filament():
             if `True`,`v` is considered the module of a 
             uniform velocity field 
         """
-        omega, R, th0 = line_param
-        collection = [StreamLine(omega, Ri, thi).compute_stream(frame, v, field=field) for Ri in R for thi in th0]
+        if frame.t is None:
+            self.frame = frame
+            self.lines = None
+            self.trj = None
+            self.vel = None
+        else:
+            omega, R, th0 = line_param
+            collection = [StreamLine(omega, Ri, thi).compute_stream(frame, v, field=field) for Ri in R for thi in th0]
 
-        self.frame = frame.copy()
-        self.lines = collection
-        self.trj = np.array([line.pos for line in collection])
-        self.vel = np.array([line.vel for line in collection])
+            self.frame = frame.copy()
+            self.lines = [line.copy() for line in collection]
+            self.trj = np.array([line.pos for line in collection])
+            self.vel = np.array([line.vel for line in collection])
+    
+    def copy(self):
+        new_filament = Filament(*Filament.EMPTY_FIL)
+        new_filament.frame = self.frame.copy()
+        new_filament.lines = [line.copy() for line in self.lines]
+        new_filament.trj = self.trj.copy()
+        new_filament.vel = self.vel.copy()
+        return new_filament
+
+    def rotate(self, ang: int | float | Sequence[int | float], axis: str):
+        new_filament: Filament = self.copy()
+        new_filament.frame = new_filament.frame.rotate(ang, axis)
+        new_filament.lines = [line.rotate(ang, axis) for line in new_filament.lines]
+        new_filament.trj = np.array([line.pos for line in new_filament.lines])
+        new_filament.vel = np.array([line.vel for line in new_filament.lines])
+        return new_filament
