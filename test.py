@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import filpy.geobj as geobj
 from filpy.geobj import Frame, Filament
 
-test_num = 1
+test_num = 0
 
 if test_num == 0:
 
@@ -32,11 +32,17 @@ if test_num == 0:
 
     # set the initial values for the other orthogonal vectors
     r = Frame.normalize(np.array([[1],[0],[-t[0,0]/t[2,0]]]))    #: normal vector
-
     s = Frame.normalize(np.cross(t[:,0],r[:,0]).reshape(3,1))    #: third vector
 
     # compute the frame evolution along the curve via the double reflection method
     frame = Frame(u,x,t,r,s)
+
+    print('|r|\t|s|\t|t|')
+    print(f'{Frame.vec_module(frame.r)}\t{Frame.vec_module(frame.s)}\t{Frame.vec_module(frame.t)}\t')
+    print('r·t\tr·s\tt·s')
+    for ui in range(numpoints):
+        print(f'{frame.r[:,ui] @ frame.t[:,ui]:.3}\t{frame.r[:,ui] @ frame.s[:,ui]:.3}\t{frame.t[:,ui] @ frame.s[:,ui]:.3}')
+
 
     # rot
     rot = True
@@ -45,7 +51,7 @@ if test_num == 0:
         ang_j = -(15/180)
         ang_k = (1+0.5/180)
 
-        frame.rotate((ang_i, ang_j, ang_k), 'ijk')
+        frame = frame.rotate((ang_i, ang_j, ang_k), 'ijk')
 
 
     ## Computation of the filament line
@@ -57,12 +63,12 @@ if test_num == 0:
     th_max = 1.98
     th_den = 30
     th0 = np.linspace(0,th_max,th_den)
-    V = lambda v1 : v1
-    v_field = 's'
-    V = lambda v1,v2 : v1-v2*omega
-    v_field = 'rs'
-    # V = 5
-    # v_field = 'unif'
+    # V = lambda v1 : v1
+    # v_field = 's'
+    # V = lambda v1,v2 : v1-v2*omega
+    # v_field = 'rs'
+    V = 5
+    v_field = 'unif'
     filament = Filament(frame,(omega,R,th0),V,field=v_field)
     trajectory = filament.trj
     velocity   = filament.vel
@@ -94,7 +100,7 @@ if test_num == 0:
 
     if DISPLAY_PLOT:
             
-        plots = '0'
+        plots = '3'
 #         plots = input(#
 # """
 # Select a plot to show:
@@ -109,9 +115,9 @@ if test_num == 0:
 
         # map1 = ((-0.25,0.2),(0.9,1.6))
         # map1 = ((-0.09,0.09),(1.2,1.6))
-        map1 = ((-0.1,0.2),(0.4,0.8))
-        map2 = ((0.3,0.8),(-0.6,-0.))
-        map3 = ((-0.5,-0.2),(-2.35,-2.05))
+        map1 = ((-0.19,0.1),(0.5,0.9))
+        map2 = ((0.4,1.),(-0.7,0.1))
+        map3 = ((-0.16,-0.08),(-0.05,0.2))
 
         if plots == 'all' or '0' in plots:
             import mayavi.mlab as mlab
@@ -129,7 +135,7 @@ if test_num == 0:
         if plots == 'all' or '1' in plots:
             fig, ax = plt.subplots(2,3)
 
-            fig.suptitle(f'{len(filament.lines)} trajectory with {numpoints} points\n$\ell = i, j, k$, bins num: {binning}, $R \\in [{R_min}, {R_max}]$, $\\omega =$ {omega}, '+'uniform velocity: $|\\vec{V}| =$ '+f'{V}')
+            fig.suptitle(f'{len(filament.lines)} lines with {numpoints} points\n$\ell = i, j, k$, bins num: {binning}, $R \\in [{R_min}, {R_max}]$, $\\omega =$ {omega}')
 
             axi = ax[:,0]
             axj = ax[:,1]
@@ -250,54 +256,172 @@ if test_num == 0:
 
 elif test_num == 1:
 
+    ### FILAMENT 1
     ## INITIALIZATION
-
     numpoints = 500
-    u = np.linspace(-2,0, numpoints)
+    u = np.linspace(-2.5,0.5, numpoints)
 
     # spine curve coordinates
-    x_i = u**2
-    x_j = (u+1)**2
-    x_k = (u+1)**3
+    x_i = u
+    x_j = (u+1)**2/2
+    x_k = (u+1)**2/2
     x = np.array([x_i,x_j,x_k])
 
     # tangent vector coordinates
-    t_i = 2*u
-    t_j = 2*(u+1)
-    t_k = 3*(u+1)**2
+    t_i = np.ones(numpoints)
+    t_j = (u+1)
+    t_k = (u+1)
     t = Frame.normalize(np.array([t_i,t_j,t_k]))
 
     # start frame vectors
-    r = Frame.normalize(np.array([[1],[1],[(-t[0,0]-t[0,1])/t[0,2]]]))
+    r = Frame.normalize(np.array([[1],[1],[(-t[0,0]-t[1,0])/t[2,0]]]))
     s = Frame.normalize(np.cross(t[:,0],r[:,0]).reshape(3,1))
 
     # compute the frame
     frame = Frame(u,x,t,r,s)
 
-    ## FILAMENT
+    ## BUILDING
     omega = 0
-    r_den = 2
+    r_den = 5
     R = np.linspace(0.2,0.3,r_den)
-    th_den = 10
+    th_den = 20
     th0 = np.linspace(0,1.9,th_den)
     V = 2
     filament1 = Filament(frame,(omega,R,th0),V,'unif')
+
+    ### FILAMENT 2
+    ## INITIALIZATION
+    numpoints = 500
+    u = np.linspace(-2.5,2.5, numpoints)
+
+    # spine curve coordinates
+    x_i = u - 0.5
+    x_j = cos((u+1)/2*pi) +0.3
+    x_k = sin((u+1)/2*pi) 
+    x = np.array([x_i,x_j,x_k])
+
+    # tangent vector coordinates
+    t_i = np.ones(numpoints)
+    t_j = -sin((u+1)/2*pi)/2
+    t_k =  cos((u+1)/2*pi)/2
+    t = Frame.normalize(np.array([t_i,t_j,t_k]))
+
+    # start frame vectors
+    r = Frame.normalize(np.array([[1],[1],[(-t[0,0]-t[1,0])/t[2,0]]]))
+    s = Frame.normalize(np.cross(t[:,0],r[:,0]).reshape(3,1))
+
+    # compute the frame
+    frame = Frame(u,x,t,r,s)
+
+    ## BUILDING
+    omega = 0
+    r_den = 5
+    R = np.linspace(0.1,0.3,r_den)
+    th_den = 20
+    th0 = np.linspace(0,1.9,th_den)
+    V = 2
+    filament2 = Filament(frame,(omega,R,th0),V,'unif')
+
+    rotation = True
+    if rotation:
+        ang_i = 0/180
+        ang_j = 30/180
+        ang_k = 25/180
+        ang = (ang_i,ang_j,ang_k)
+        filament1 = filament1.rotate(ang,'ijk')
+        filament2 = filament2.rotate(ang,'ijk')
+
     trajectory1 = filament1.trj
+    velocity1   = filament1.vel
+    trajectory2 = filament2.trj
+    velocity2   = filament2.vel
+
 
     ## PLOTS 
     DISPLAY_PLOT = True
 
     if DISPLAY_PLOT:
 
-        plots = '0'
+        plots = '02'
 
         if plots == 'all' or '0' in plots:
             import mayavi.mlab as mlab
 
-            mlab.plot3d(*frame.line,color=(0,1,0),tube_radius=None)
-            mlab.plot3d(*frame.line,color=(0,1,0),tube_radius=R[0])
+            # mlab.plot3d(*frame.line,color=(0,1,0),tube_radius=R[0])
+            mlab.plot3d(*filament1.frame.line,color=(0,1,0),tube_radius=None)
             colors = np.array([np.linspace(0,1,len(trajectory1)//r_den)]*r_den).flatten()
             for (trj,c) in zip(trajectory1,colors):
                 mlab.plot3d(*trj,color=(c,0,1))
+            mlab.plot3d(*filament2.frame.line,color=(1,0,0),tube_radius=None)
+            colors = np.array([np.linspace(0,1,len(trajectory2)//r_den)]*r_den).flatten()
+            for (trj,c) in zip(trajectory2,colors):
+                mlab.plot3d(*trj,color=(1-c,1,c))
 
-            mlab.show()    
+            mlab.show()
+        
+        # linesnumber = trajectory1.shape[0]
+        # trj1_j = trajectory1[:,1,:] 
+        # trj1_k = trajectory1[:,2,:] 
+        # trj2_j = trajectory2[:,1,:]
+        # trj2_k = trajectory2[:,2,:]
+        # trj_j = np.array([ [ trj1_j[lin,ui//2] if ui % 2 == 0 else trj2_j[lin,(ui-1)//2] for ui in range(numpoints*2)] for lin in range(linesnumber)]) 
+        # trj_k = np.array([ [ trj1_k[lin,ui//2] if ui % 2 == 0 else trj2_k[lin,(ui-1)//2] for ui in range(numpoints*2)] for lin in range(linesnumber)]) 
+        # vel_i = np.array([ [ velocity1[lin,0,ui//2] if ui % 2 == 0 else velocity2[lin,0,(ui-1)//2] for ui in range(numpoints*2)] for lin in range(linesnumber)]) 
+        vel_i = np.append(velocity1[:,0],velocity2[:,0])
+        vmin, vmax = vel_i.min(), vel_i.max()
+        map1 = ((-0.7,0.1),(0.,0.9))
+        map2 = ((-0.5,-0.1),(0.2,0.7))
+        map3 = ((0.,0.6),(0.5,1.1))
+
+        binning = 40
+        if plots == 'all' or '2' in plots:
+            fig = plt.figure(2)
+            fig.suptitle(f'Plane $j$-$k$ - $\\omega =$ {omega}')
+            ax0 = fig.add_subplot(1,2,1)
+            for ui in range(numpoints):
+                pp = ax0.scatter(trajectory1[:,1,ui],trajectory1[:,2,ui],c=velocity1[:,0,ui],vmin=vmin,vmax=vmax,cmap='RdBu')
+                pp = ax0.scatter(trajectory2[:,1,ui],trajectory2[:,2,ui],c=velocity2[:,0,ui],vmin=vmin,vmax=vmax,cmap='RdBu')
+            ax0.set_xlabel('$j$')
+            ax0.set_ylabel('$k$')
+            
+            
+            ax0.plot([map1[0][0],map1[0][0],map1[0][1],map1[0][1],map1[0][0]],[map1[1][0],map1[1][1],map1[1][1],map1[1][0],map1[1][0]], color='green',label='map1')
+            ax0.plot([map2[0][0],map2[0][0],map2[0][1],map2[0][1],map2[0][0]],[map2[1][0],map2[1][1],map2[1][1],map2[1][0],map2[1][0]], color='violet',label='map2')
+            ax0.plot([map3[0][0],map3[0][0],map3[0][1],map3[0][1],map3[0][0]],[map3[1][0],map3[1][1],map3[1][1],map3[1][0],map3[1][0]], color='orange',label='map3')
+
+            ax0.legend()
+
+            cbaxes = fig.add_axes([0.02, 0.1, 0.02, 0.8])  
+            fig.colorbar(pp,cax = cbaxes,extend='both',label='$v_i$')
+            
+            indx1_mp1 = np.where((trajectory1[:,1] >= map1[0][0]) & (trajectory1[:,1] <= map1[0][1]) & (trajectory1[:,2] >= map1[1][0]) & (trajectory1[:,2] <= map1[1][1]))
+            indx2_mp1 = np.where((trajectory2[:,1] >= map1[0][0]) & (trajectory2[:,1] <= map1[0][1]) & (trajectory2[:,2] >= map1[1][0]) & (trajectory2[:,2] <= map1[1][1]))
+            vel_mp1   = np.append(velocity1[:,0,indx1_mp1],velocity2[:,0,indx2_mp1])
+            
+            indx1_mp2 = np.where((trajectory1[:,1] >= map2[0][0]) & (trajectory1[:,1] <= map2[0][1]) & (trajectory1[:,2] >= map2[1][0]) & (trajectory1[:,2] <= map2[1][1]))
+            indx2_mp2 = np.where((trajectory2[:,1] >= map2[0][0]) & (trajectory2[:,1] <= map2[0][1]) & (trajectory2[:,2] >= map2[1][0]) & (trajectory2[:,2] <= map2[1][1]))
+            vel_mp2   = np.append(velocity1[:,0,indx1_mp2],velocity2[:,0,indx2_mp2])
+ 
+            indx1_mp3 = np.where((trajectory1[:,1] >= map3[0][0]) & (trajectory1[:,1] <= map3[0][1]) & (trajectory1[:,2] >= map3[1][0]) & (trajectory1[:,2] <= map3[1][1]))
+            indx2_mp3 = np.where((trajectory2[:,1] >= map3[0][0]) & (trajectory2[:,1] <= map3[0][1]) & (trajectory2[:,2] >= map3[1][0]) & (trajectory2[:,2] <= map3[1][1]))
+            vel_mp3   = np.append(velocity1[:,0,indx1_mp3],velocity2[:,0,indx2_mp3])
+            
+            
+            ax1 = fig.add_subplot(3,2,2)
+            ax1.hist(vel_mp1,bins=binning,color='green',label='map1')
+            ax1.set_ylabel('counts')
+            ax1.legend()
+            ax2 = fig.add_subplot(3,2,4)
+            ax2.hist(vel_mp2,bins=binning,color='violet',label='map2')
+            ax2.set_ylabel('counts')
+            ax2.legend()
+            ax3 = fig.add_subplot(3,2,6)
+            ax3.hist(vel_mp3,bins=binning,color='orange',label='map3')
+            ax3.set_xlabel('$v_i$')
+            ax3.set_ylabel('counts')
+            ax3.legend()
+
+            plt.show()
+
+            
+            
